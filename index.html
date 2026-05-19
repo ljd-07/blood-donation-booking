@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>사내 헌혈 행사 예약</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --red-dark: #A32D2D;
+    --red-border: #F7C1C1;
+    --green: #639922;
+    --green-light: #EAF3DE;
+    --green-dark: #3B6D11;
+    --gray: #888780;
+    --gray-light: #F1EFE8;
+    --gray-dark: #444441;
+    --text: #2C2C2A;
+    --text-muted: #5F5E5A;
+    --border: rgba(44,44,42,0.12);
+    --bg: #fff;
+    --surface: #F8F7F4;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #F1EFE8;
+      --text-muted: #B4B2A9;
+      --border: rgba(241,239,232,0.12);
+      --bg: #1C1C1A;
+      --surface: #2C2C2A;
+      --red-light: #501313;
+      --green-light: #173404;
+      --gray-light: #2C2C2A;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  .header {
+    background: var(--red);
+    color: #fff;
+    padding: 20px 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .header-icon {
+    width: 28px;
+    height: 28px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .header h1 { font-size: 18px; font-weight: 600; color: #fff; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.8); margin-left: 38px; }
+
+  .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    margin-right: 4px;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .name-section {
+    background: var(--bg);
+    margin: 12px;
+    border-radius: var(--radius);
+    padding: 16px;
+    border: 0.5px solid var(--border);
+  }
+
+  .name-section label {
+    font-size: 13px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .name-row { display: flex; gap: 8px; }
+
+  .name-input {
+    flex: 1;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 15px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .name-input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(226,75,74,0.1);
+  }
+
+  .name-confirm-btn {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .name-confirmed { display: flex; align-items: center; gap: 8px; }
+
+  .name-badge {
+    background: var(--red-light);
+    color: var(--red-dark);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 0.5px solid var(--red-border);
+  }
+
+  .name-change-btn {
+    background: none;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .my-booking-banner {
+    background: var(--green-light);
+    margin: 0 12px 4px;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0.5px solid rgba(99,153,34,0.25);
+  }
+
+  .my-booking-banner .dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .my-booking-text { font-size: 13px; color: var(--green-dark); flex: 1; }
+  .my-booking-text strong { font-weight: 600; }
+
+  .cancel-my-btn {
+    background: none;
+    border: 0.5px solid rgba(99,153,34,0.35);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--green-dark);
+    cursor: pointer;
+  }
+
+  .section-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    padding: 12px 16px 6px;
+  }
+
+  .slot-card {
+    background: var(--bg);
+    margin: 0 12px 8px;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    border: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .slot-card.mine { border-color: var(--green); border-width: 1.5px; }
+  .slot-card.full { opacity: 0.6; }
+
+  .time-label { font-size: 16px; font-weight: 600; color: var(--text); min-width: 56px; }
+
+  .slot-mid { flex: 1; }
+
+  .progress-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+
+  .progress-bar {
+    flex: 1; height: 4px;
+    background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%; border-radius: 2px;
+    background: var(--red); transition: width 0.4s;
+  }
+
+  .progress-fill.full-fill { background: var(--gray); }
+  .progress-fill.mine-fill { background: var(--green); }
+
+  .count-text { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+  .spot-dots { display: flex; gap: 4px; }
+
+  .spot-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    transition: all 0.2s;
+  }
+
+  .spot-dot.taken { background: var(--red); border-color: var(--red); }
+  .spot-dot.taken.is-mine { background: var(--green); border-color: var(--green); }
+
+  .book-btn {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .book-btn:active { opacity: 0.85; transform: scale(0.97); }
+
+  .book-btn:disabled {
+    background: var(--gray-light);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  .status-tag {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .tag-full { background: var(--gray-light); color: var(--gray-dark); }
+  .tag-mine { background: var(--green-light); color: var(--green-dark); }
+
+  .info-banner {
+    margin: 4px 12px 8px;
+    padding: 10px 14px;
+    background: var(--gray-light);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 16px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    margin: 20px 12px;
+    padding: 16px;
+    background: var(--red-light);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--red-border);
+    font-size: 13px;
+    color: var(--red-dark);
+    line-height: 1.6;
+  }
+
+  .error-box code {
+    display: block;
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 6px;
+    font-size: 12px;
+    word-break: break-all;
+    font-family: monospace;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--text);
+    color: var(--bg);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-icon">🩸</div>
+    <h1>사내 헌혈 행사 예약</h1>
+  </div>
+  <div class="header-sub" id="liveStatus">09:30 – 12:00 &nbsp;·&nbsp; 시간대별 최대 5명</div>
+</div>
+
+<div id="app">
+  <div class="loading-screen">
+    <div class="spinner"></div>
+    <span>연결 중...</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ★ Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, runTransaction, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ★★★ 여기에 본인의 Firebase 설정값을 붙여넣으세요 ★★★
+const firebaseConfig = {
+  apiKey: "AIzaSyDs_M9j-YtbAtSWpZejWNxrZ8IQZPIAIlA",
+  authDomain: "blood-donation-72cd8.firebaseapp.com",
+  databaseURL: "https://blood-donation-72cd8-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "blood-donation-72cd8",
+  storageBucket: "blood-donation-72cd8.firebasestorage.app",
+  messagingSenderId: "591365845671",
+  appId: "1:591365845671:web:4d1b65fd3c34652c472182",
+  measurementId: "G-V14JB734JQ"
+};
+
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+const TIME_SLOTS = ['09:30','10:00','10:30','11:00','11:30'];
+const MAX_PER_SLOT = 5;
+const NAME_KEY = 'blood_donation_user_v1';
+
+let userName = '';
+let bookings = {};
+let mySlot = null;
+let db;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function findMySlot() {
+  mySlot = null;
+  if (!userName) return;
+  for (const slot of TIME_SLOTS) {
+    const list = bookings[slot] || {};
+    if (Object.values(list).includes(userName)) { mySlot = slot; break; }
+  }
+}
+
+function render() {
+  findMySlot();
+  const app = document.getElementById('app');
+  let html = '';
+
+  // 이름 입력 영역
+  html += `<div class="name-section"><label>예약자 이름</label>`;
+  if (userName) {
+    html += `<div class="name-confirmed">
+      <span class="name-badge">👤 ${escHtml(userName)}</span>
+      <button class="name-change-btn" onclick="changeName()">변경</button>
+    </div>`;
+  } else {
+    html += `<div class="name-row">
+      <input class="name-input" id="nameInput" type="text" placeholder="이름을 입력하세요" maxlength="20"
+        onkeydown="if(event.key==='Enter')window._confirmName()"/>
+      <button class="name-confirm-btn" onclick="window._confirmName()">확인</button>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // 내 예약 배너
+  if (mySlot) {
+    html += `<div class="my-booking-banner">
+      <div class="dot"></div>
+      <div class="my-booking-text"><strong>${mySlot}</strong> 예약 완료 · 현장에서 이름 말씀해주세요</div>
+      <button class="cancel-my-btn" onclick="window._cancelSlot()">취소</button>
+    </div>`;
+  }
+
+  html += `<div class="info-banner">선착순 마감 · 1인 1시간대 예약 · 실시간 반영</div>`;
+  html += `<div class="section-title">시간대 선택</div>`;
+
+  TIME_SLOTS.forEach(slot => {
+    const slotData = bookings[slot] || {};
+    const names = Object.values(slotData);
+    const count = names.length;
+    const isFull = count >= MAX_PER_SLOT;
+    const isMine = mySlot === slot;
+    const pct = Math.round((count / MAX_PER_SLOT) * 100);
+
+    let cardClass = 'slot-card';
+    if (isMine) cardClass += ' mine';
+    else if (isFull) cardClass += ' full';
+
+    let fillClass = 'progress-fill';
+    if (isMine) fillClass += ' mine-fill';
+    else if (isFull) fillClass += ' full-fill';
+
+    let dots = '';
+    for (let i = 0; i < MAX_PER_SLOT; i++) {
+      let dc = 'spot-dot';
+      if (i < count) { dc += ' taken'; if (isMine && i === 0) dc += ' is-mine'; }
+      dots += `<div class="${dc}"></div>`;
+    }
+
+    let btnHtml = '';
+    if (isMine) {
+      btnHtml = `<span class="status-tag tag-mine">내 예약</span>`;
+    } else if (isFull) {
+      btnHtml = `<span class="status-tag tag-full">마감</span>`;
+    } else {
+      const dis = (mySlot && !isMine) ? 'disabled' : '';
+      btnHtml = `<button class="book-btn" ${dis} onclick="window._bookSlot('${slot}')">예약</button>`;
+    }
+
+    html += `<div class="${cardClass}">
+      <div class="time-label">${slot}</div>
+      <div class="slot-mid">
+        <div class="progress-row">
+          <div class="progress-bar"><div class="${fillClass}" style="width:${pct}%"></div></div>
+          <span class="count-text">${count}/${MAX_PER_SLOT}</span>
+        </div>
+        <div class="spot-dots">${dots}</div>
+      </div>
+      ${btnHtml}
+    </div>`;
+  });
+
+  app.innerHTML = html;
+
+  if (!userName) {
+    const inp = document.getElementById('nameInput');
+    if (inp) setTimeout(() => inp.focus(), 80);
+  }
+
+  // 라이브 상태 표시
+  document.getElementById('liveStatus').innerHTML =
+    `<span class="live-dot"></span> 실시간 연결됨 &nbsp;·&nbsp; 시간대별 최대 ${MAX_PER_SLOT}명`;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 예약하기
+window._bookSlot = async (slot) => {
+  if (!userName) { showToast('이름을 먼저 입력해주세요'); return; }
+  if (mySlot) { showToast('이미 예약하셨습니다'); return; }
+
+  const slotRef = ref(db, `bookings/${slot}`);
+  try {
+    const result = await runTransaction(slotRef, (current) => {
+      const data = current || {};
+      const names = Object.values(data);
+      if (names.length >= MAX_PER_SLOT) return; // 마감 → 트랜잭션 중단
+      if (names.includes(userName)) return data; // 이미 있음
+      const key = Date.now().toString();
+      data[key] = userName;
+      return data;
+    });
+
+    if (result.committed) {
+      const names = Object.values(result.snapshot.val() || {});
+      if (names.includes(userName)) {
+        showToast(`✅ ${slot} 예약 완료!`);
+      } else {
+        showToast('마감되었습니다. 다른 시간을 선택해주세요');
+      }
+    }
+  } catch (e) {
+    showToast('오류가 발생했습니다. 다시 시도해주세요');
+    console.error(e);
+  }
+};
+
+// 예약 취소
+window._cancelSlot = async () => {
+  if (!mySlot || !userName) return;
+  const slotRef = ref(db, `bookings/${mySlot}`);
+  try {
+    await runTransaction(slotRef, (current) => {
+      const data = current || {};
+      for (const key of Object.keys(data)) {
+        if (data[key] === userName) { delete data[key]; break; }
+      }
+      return data;
+    });
+    showToast('예약이 취소되었습니다');
+  } catch (e) {
+    showToast('오류가 발생했습니다');
+  }
+};
+
+// 이름 확인
+window._confirmName = () => {
+  const inp = document.getElementById('nameInput');
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) { showToast('이름을 입력해주세요'); return; }
+  userName = val;
+  try { localStorage.setItem(NAME_KEY, userName); } catch {}
+  render();
+};
+
+window.changeName = () => {
+  userName = '';
+  try { localStorage.removeItem(NAME_KEY); } catch {}
+  render();
+};
+
+// Firebase 설정값 누락 감지
+function isConfigEmpty(cfg) {
+  return Object.values(cfg).some(v => v.includes('여기에_붙여넣기'));
+}
+
+function showConfigError() {
+  document.getElementById('app').innerHTML = `
+    <div class="error-box">
+      ⚠️ Firebase 설정이 필요합니다.<br><br>
+      아래 가이드에 따라 <code>index.html</code> 파일 안의<br>
+      <strong>firebaseConfig</strong> 값을 채워주세요.<br>
+      <code>apiKey, authDomain, databaseURL, projectId ...</code>
+    </div>`;
+}
+
+// 초기화
+function init() {
+  if (isConfigEmpty(firebaseConfig)) { showConfigError(); return; }
+
+  try { userName = localStorage.getItem(NAME_KEY) || ''; } catch {}
+
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+
+  // 실시간 리스닝
+  const bookingsRef = ref(db, 'bookings');
+  onValue(bookingsRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    bookings = {};
+    TIME_SLOTS.forEach(slot => { bookings[slot] = data[slot] || {}; });
+    render();
+  }, (error) => {
+    document.getElementById('app').innerHTML = `
+      <div class="error-box">
+        Firebase 연결 오류: ${error.message}<br><br>
+        Database Rules에서 read/write가 허용되어 있는지 확인해주세요.
+      </div>`;
+  });
+}
+
+init();
+</script>
+</body>
+</html>
