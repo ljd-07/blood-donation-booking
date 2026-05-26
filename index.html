@@ -112,10 +112,11 @@
     font-weight: 500;
   }
 
-  .name-row { display: flex; gap: 8px; }
+  .name-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .name-input {
-    flex: 1;
+    flex: 2;
+    min-width: 130px;
     border: 0.5px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 10px 12px;
@@ -126,7 +127,20 @@
     transition: border-color 0.15s;
   }
 
-  .name-input:focus {
+  .pw-input {
+    flex: 1;
+    min-width: 90px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 15px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .name-input:focus, .pw-input:focus {
     border-color: var(--red);
     box-shadow: 0 0 0 3px rgba(226,75,74,0.1);
   }
@@ -502,14 +516,16 @@ const firebaseConfig = {
 
 const TIME_SLOTS = ['09:30','10:00','10:30','11:00','11:30'];
 const MAX_PER_SLOT = 5;
-const NAME_KEY = 'blood_donation_user_v1';
-const ADMIN_NAME = '관리자'; // 이 이름으로 로그인 시 관리자 메뉴 노출
+const NAME_KEY = 'blood_donation_user_v2';
+const PASSWORD_KEY = 'blood_donation_pw_v2';
+const ADMIN_NAME = '관리자'; 
 
 let userName = '';
+let userPw = ''; // 현재 로그인한 사용자의 임시 비밀번호
 let bookings = {};
 let mySlot = null;
-let myStatus = ''; // 'confirmed' (확정) 또는 'waiting' (대기)
-let expandedSlots = {}; // 시간대별 명단 펼침 상태 기억 ({ '09:30': true })
+let myStatus = ''; 
+let expandedSlots = {}; 
 let db;
 
 function showToast(msg) {
@@ -526,7 +542,6 @@ function findMySlot() {
 
   for (const slot of TIME_SLOTS) {
     const slotData = bookings[slot] || {};
-    // Firebase object 구조: { 임의키: { name: "홍길동", timestamp: 12345, type: "confirmed"/"waiting" } }
     const items = Object.values(slotData);
     const mine = items.find(item => item.name === userName);
     if (mine) {
@@ -537,7 +552,6 @@ function findMySlot() {
   }
 }
 
-// 시간대별 정렬된 예약/대기 명단 추출 함수
 function getSortedList(slotData) {
   const items = Object.values(slotData);
   items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
@@ -585,44 +599,44 @@ function render() {
   const app = document.getElementById('app');
   let html = '';
 
-  // 이름 입력 영역
-  html += `<div class="name-section"><label>예약자 이름</label>`;
+  // 이름 및 암호 입력 영역
+  html += `<div class="name-section"><label>예약자 본인인증 (이름 및 암호)</label>`;
   if (userName) {
     html += `<div class="name-confirmed">
-      <span class="name-badge">${userName === ADMIN_NAME ? '👑' : '👤'} ${escHtml(userName)}</span>
-      <button class="name-change-btn" onclick="changeName()">변경</button>
+      <span class="name-badge">${userName === ADMIN_NAME ? '👑' : '👤'} ${escHtml(userName)} (접속됨)</span>
+      <button class="name-change-btn" onclick="changeName()">로그아웃/변경</button>
     </div>`;
   } else {
     html += `<div class="name-row">
-      <input class="name-input" id="nameInput" type="text" placeholder="이름을 입력하세요" maxlength="20"
-        onkeydown="if(event.key==='Enter')window._confirmName()"/>
-      <button class="name-confirm-btn" onclick="window._confirmName()">확인</button>
+      <input class="name-input" id="nameInput" type="text" placeholder="이름 입력" maxlength="20"/>
+      <input class="pw-input" id="pwInput" type="password" placeholder="암호 (숫자4자리 권장)" maxlength="15"
+        onkeydown="if(event.key==='Enter')window._confirmIdentity()"/>
+      <button class="name-confirm-btn" onclick="window._confirmIdentity()">확인</button>
     </div>`;
   }
   html += `</div>`;
 
-  // 내 예약 배너 수정 (대기 상태 분기)
   if (mySlot) {
     if (myStatus === 'confirmed') {
       html += `<div class="my-booking-banner confirmed">
         <div class="dot"></div>
-        <div class="my-booking-text"><strong>${mySlot}</strong> 확정 완료 · 현장에서 이름을 말씀해주세요</div>
-        <button class="cancel-my-btn" onclick="window._cancelSlot()">취소</button>
+        <div class="my-booking-text"><strong>${mySlot}</strong> 확정 완료 · 취소 시 설정한 비밀번호 검증이 필요합니다.</div>
+        <button class="cancel-my-btn" onclick="window._cancelSlot()">예약 취소</button>
       </div>`;
     } else {
       html += `<div class="my-booking-banner waiting">
         <div class="dot"></div>
-        <div class="my-booking-text"><strong>${mySlot}</strong> 대기 예약 중 · 앞 순번 취소 시 자동 확정됩니다</div>
-        <button class="cancel-my-btn" onclick="window._cancelSlot()">취소</button>
+        <div class="my-booking-text"><strong>${mySlot}</strong> 대기 예약 중 · 앞 순번 취소 시 자동 확정됩니다.</div>
+        <button class="cancel-my-btn" onclick="window._cancelSlot()">대기 취소</button>
       </div>`;
     }
   }
 
   html += `<div class="info-banner">
-    • 시간대를 클릭하면 세부 예약자 명단을 확인할 수 있습니다.<br>
-    • 정원(5명) 초과 시 <strong>대기 예약</strong>으로 등록되며, 기존 예약자 취소 시 자동 확정 전환됩니다.
+    • 본인 이름과 함께 사용할 <strong>임의의 암호</strong>를 입력하여 예약 시스템에 접속해 주세요.<br>
+    • 본인이 설정한 암호를 모르면 타인이 내 예약을 절대 취소할 수 없습니다.
   </div>`;
-  html += `<div class="section-title"><span>시간대 선택</span></div>`;
+  html += `<div class="section-title"><span>시간대 선택 (클릭 시 명단 토글)</span></div>`;
 
   TIME_SLOTS.forEach(slot => {
     const slotData = bookings[slot] || {};
@@ -675,7 +689,6 @@ function render() {
       btnHtml = `<button class="book-btn" ${dis} onclick="window._bookSlot('${slot}', false); event.stopPropagation();">예약</button>`;
     }
 
-    // 시간대별 상세 명단 돔 생성
     let confirmedTags = confirmed.map(p => `<span class="attendee-name-tag ${p.name===userName?'its-me':''}">${escHtml(p.name)}</span>`).join('');
     let waitingTags = waiting.map((p, idx) => `<span class="attendee-name-tag is-waiting-user ${p.name===userName?'its-me':''}">대기${idx+1}:${escHtml(p.name)}</span>`).join('');
 
@@ -718,15 +731,14 @@ function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// 명단 토글 함수
 window._toggleSlotExpand = (slot) => {
   expandedSlots[slot] = !expandedSlots[slot];
   render();
 };
 
-// 예약하기 및 대기 신청 통합 트랜잭션
+// 예약 신청 시 이름과 함께 비밀번호도 암호화 기법 없이 키값 내부에 매칭 저장합니다.
 window._bookSlot = async (slot, isWaitingMode = false) => {
-  if (!userName) { showToast('이름을 먼저 입력해주세요'); return; }
+  if (!userName || !userPw) { showToast('상단에서 이름과 암호를 입력 후 접속해 주세요.'); return; }
   if (mySlot) { showToast('이미 예약(또는 대기) 내역이 있습니다.'); return; }
 
   const slotRef = ref(db, `bookings/${slot}`);
@@ -735,17 +747,18 @@ window._bookSlot = async (slot, isWaitingMode = false) => {
       const data = current || {};
       const items = Object.values(data);
       
-      // 중복 체크
-      if (items.some(i => i.name === userName)) return data;
+      // 누군가 이미 해당 이름을 쓰고 있는지 전체 타임 검증 (실제로는 Realtime DB 상에 중복명 불가 처리)
+      if (items.some(i => i.name === userName)) {
+        return data; 
+      }
 
       const confirmedCount = items.filter(i => i.type === 'confirmed').length;
       const key = Date.now().toString();
 
-      // 정원이 남았고 대기모드가 아니면 'confirmed', 가득 찼으면 'waiting' 분기 처리
       if (confirmedCount < MAX_PER_SLOT && !isWaitingMode) {
-        data[key] = { name: userName, timestamp: Date.now(), type: 'confirmed' };
+        data[key] = { name: userName, password: userPw, timestamp: Date.now(), type: 'confirmed' };
       } else {
-        data[key] = { name: userName, timestamp: Date.now(), type: 'waiting' };
+        data[key] = { name: userName, password: userPw, timestamp: Date.now(), type: 'waiting' };
       }
       return data;
     });
@@ -755,26 +768,43 @@ window._bookSlot = async (slot, isWaitingMode = false) => {
     }
   } catch (e) {
     showToast('오류가 발생했습니다. 다시 시도해주세요');
-    console.error(e);
   }
 };
 
-// 예약 취소 및 대기자 자동 승격 알고리즘 포함 트랜잭션
+// 취소 로직 실행 시 브라우저 프롬프트창을 이용해 패스워드를 재검증
 window._cancelSlot = async () => {
   if (!mySlot || !userName) return;
+
+  // 1차 프롬프트 검증
+  const inputPw = prompt("예약 취소를 위해 본인의 암호를 입력해주세요:");
+  if (inputPw === null) return; // 취소 버튼 클릭 시 종료
+  if (!inputPw.trim()) { showToast('암호를 정확히 입력해야 합니다.'); return; }
+
   const slotRef = ref(db, `bookings/${mySlot}`);
   try {
+    let isPasswordCorrect = true;
+
     await runTransaction(slotRef, (current) => {
       const data = current || {};
       
-      // 1. 본인 데이터 삭제
       let targetKey = null;
       for (const key of Object.keys(data)) {
-        if (data[key].name === userName) { targetKey = key; break; }
+        if (data[key].name === userName) { 
+          targetKey = key; 
+          break; 
+        }
       }
-      if (targetKey) delete data[targetKey];
 
-      // 2. 삭제 후, 남은 인원들을 바탕으로 대기자 우선순위 승격 작동
+      if (targetKey) {
+        // 데이터베이스 내부에 저장된 비밀번호와 실시간 입력 비밀번호 검증 (관리자 계정은 패스 통과 가능)
+        if (data[targetKey].password !== inputPw.trim() && userName !== ADMIN_NAME) {
+          isPasswordCorrect = false;
+          return data; // 변경 취소
+        }
+        delete data[targetKey];
+      }
+
+      // 대기 순번 자동 승격 알고리즘
       const items = Object.entries(data).map(([key, val]) => ({ key, ...val }));
       items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
@@ -784,7 +814,6 @@ window._cancelSlot = async () => {
           confirmedCount++;
         } else if (item.type === 'waiting') {
           if (confirmedCount < MAX_PER_SLOT) {
-            // 빈자리가 생겼으므로 대기 1순위를 확정 상태로 변경
             data[item.key].type = 'confirmed';
             confirmedCount++;
           }
@@ -793,42 +822,62 @@ window._cancelSlot = async () => {
 
       return data;
     });
-    showToast('예약이 취소되었습니다');
+
+    if (isPasswordCorrect) {
+      showToast('예약이 정상적으로 취소되었습니다.');
+    } else {
+      alert('❌ 암호가 일치하지 않습니다. 본인 확인에 실패했습니다.');
+    }
   } catch (e) {
-    showToast('오류가 발생했습니다');
+    showToast('오류가 발생했습니다.');
   }
 };
 
-// 이름 확인
-window._confirmName = () => {
-  const inp = document.getElementById('nameInput');
-  if (!inp) return;
-  const val = inp.value.trim();
-  if (!val) { showToast('이름을 입력해주세요'); return; }
-  userName = val;
-  try { localStorage.setItem(NAME_KEY, userName); } catch {}
+// 이름 및 암호 동시 확인 접속 처리
+window._confirmIdentity = () => {
+  const nameInp = document.getElementById('nameInput');
+  const pwInp = document.getElementById('pwInput');
+  if (!nameInp || !pwInp) return;
+
+  const nameVal = nameInp.value.trim();
+  const pwVal = pwInp.value.trim();
+
+  if (!nameVal) { showToast('이름을 입력해주세요'); return; }
+  if (!pwVal) { showToast('비밀번호를 입력해주세요'); return; }
+
+  userName = nameVal;
+  userPw = pwVal;
+
+  try { 
+    localStorage.setItem(NAME_KEY, userName); 
+    localStorage.setItem(PASSWORD_KEY, userPw); 
+  } catch {}
+  
   render();
 };
 
 window.changeName = () => {
   userName = '';
-  try { localStorage.removeItem(NAME_KEY); } catch {}
+  userPw = '';
+  try { 
+    localStorage.removeItem(NAME_KEY); 
+    localStorage.removeItem(PASSWORD_KEY); 
+  } catch {}
   render();
 };
 
-// 관리자용 CSV 다운로드 기능 구현
 window._downloadCsv = () => {
-  let csvContent = "\uFEFF시간대,구분,이름,신청시간\n";
+  let csvContent = "\uFEFF시간대,구분,이름,설정암호,신청시간\n";
   
   TIME_SLOTS.forEach(slot => {
     const { confirmed, waiting } = getSortedList(bookings[slot] || {});
     confirmed.forEach(p => {
       const timeStr = new Date(p.timestamp).toLocaleTimeString('ko-KR');
-      csvContent += `${slot},확정,${p.name},${timeStr}\n`;
+      csvContent += `${slot},확정,${p.name},${p.password || ''},${timeStr}\n`;
     });
     waiting.forEach((p, idx) => {
       const timeStr = new Date(p.timestamp).toLocaleTimeString('ko-KR');
-      csvContent += `${slot},대기(순번${idx+1}),${p.name},${timeStr}\n`;
+      csvContent += `${slot},대기(순번${idx+1}),${p.name},${p.password || ''},${timeStr}\n`;
     });
   });
 
@@ -857,7 +906,10 @@ function showConfigError() {
 
 function init() {
   if (isConfigEmpty(firebaseConfig)) { showConfigError(); return; }
-  try { userName = localStorage.getItem(NAME_KEY) || ''; } catch {}
+  try { 
+    userName = localStorage.getItem(NAME_KEY) || ''; 
+    userPw = localStorage.getItem(PASSWORD_KEY) || ''; 
+  } catch {}
 
   const app = initializeApp(firebaseConfig);
   db = getDatabase(app);
