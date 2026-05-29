@@ -798,9 +798,11 @@ window._cancelSlot = async () => {
 
       if (targetKey) {
         // 데이터베이스 내부에 저장된 비밀번호와 실시간 입력 비밀번호 검증 (관리자 계정은 패스 통과 가능)
-        if (data[targetKey].password !== inputPw.trim() && userName !== ADMIN_NAME) {
-          isPasswordCorrect = false;
-          return data; // 변경 취소
+       // DB에 저장된 암호가 존재할 때만 비교하고, 데이터가 비어있다면(과거 유저) 통과시킵니다.
+      if (data[targetKey].password && data[targetKey].password !== inputPw.trim() && userName !== ADMIN_NAME) {
+       isPasswordCorrect = false;
+        return data;
+}
         }
         delete data[targetKey];
       }
